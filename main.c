@@ -31,7 +31,6 @@
 #include <stddef.h>
 #include <stdalign.h>
 #include <stdatomic.h>
-#include <threads.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
@@ -43,7 +42,7 @@
 #include <sys/param.h>
 #include <sys/resource.h>
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__APPLE__)
 #include <sys/time.h>
 #endif
 
@@ -61,23 +60,67 @@
 
 #include "lfstack.h"
 
+
+/* If pthread barriers don't exist (e.g., Darwin) then implement
+ * a very crude implementation...
+ */
+#ifndef PTHREAD_BARRIER_SERIAL_THREAD
+#define PTHREAD_BARRIER_SERIAL_THREAD (-1)
+
+typedef struct {
+    atomic_uint count;
+    atomic_uint max;
+    u_int       init;
+} pthread_barrier_t;
+
+int
+pthread_barrier_init(pthread_barrier_t *bar, void *attr, u_int count)
+{
+    bar->count = 0;
+    bar->max = count;
+    bar->init = count;
+
+    return 0;
+}
+
+int
+pthread_barrier_wait(pthread_barrier_t *bar)
+{
+    atomic_fetch_add(&bar->count, 1);
+
+    while (bar->count < bar->max)
+        usleep(100);
+
+    if (atomic_fetch_sub(&bar->max, 1) == 0) {
+        bar->max = bar->init;
+        bar->count = 0;
+        return PTHREAD_BARRIER_SERIAL_THREAD;
+    }
+
+    return 0;
+}
+#endif
+
+
 struct mynode {
     u_long count;
 };
 
 struct tdargs {
-    alignas(128) struct lfstack *lfstack;
-    unsigned long   empty;
+    alignas(128)
+    struct lfstack *lfstack;
     pthread_t       ptid;
     int             ltid;
+    u_long          empty;
 };
 
 struct {
-    alignas(128) struct timespec ts_start, ts_done, ts_delta;
+    alignas(128)
     pthread_barrier_t bar_start, bar_done;
-    u_long itermax;
-    u_long count;
+    struct timespec   ts_start, ts_done, ts_delta;
+    u_long            itermax, count;
 } g;
+
 
 u_int maxnodes, maxbkts, maxjobs;
 const char *progname;
@@ -203,8 +246,8 @@ main(int argc, char **argv)
         tdargsv[i].ltid = i;
         tdargsv[i].lfstack = lfstack;
         rc = pthread_create(&tdargsv[i].ptid, NULL, work, &tdargsv[i]);
-		if (rc)
-			exit(EX_OSERR);
+        if (rc)
+            exit(EX_OSERR);
     }
 
     for (i = 0; i < tdargsc; ++i) {

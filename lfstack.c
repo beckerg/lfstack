@@ -33,7 +33,6 @@
 #include <stdatomic.h>
 #include <unistd.h>
 #include <string.h>
-#include <threads.h>
 #include <sys/param.h>
 
 #include "lfstack.h"
