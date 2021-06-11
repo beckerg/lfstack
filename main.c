@@ -217,7 +217,18 @@ main(int argc, char **argv)
             maxnodes = strtoul(optarg, NULL, 0);
             break;
 
+        case ':':
+            fprintf(stderr, "%s: option -%c requires a parameter, use -h for help\n",
+                    progname, optopt);
+            exit(EX_USAGE);
+
+        case '?':
+            fprintf(stderr, "%s: invalid option -%c, use -h for help\n",
+                    progname, optopt);
+            exit(EX_USAGE);
+
         default:
+            fprintf(stderr, "%s: unhandled option -%c ignored\n", progname, c);
             break;
         }
     }
