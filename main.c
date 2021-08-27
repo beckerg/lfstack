@@ -282,5 +282,7 @@ main(int argc, char **argv)
         exit(1);
     }
 
+    free(tdargsv);
+
     return 0;
 }
