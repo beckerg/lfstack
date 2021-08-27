@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdalign.h>
 #include <stdatomic.h>
 
 /* lfstack is optimized for adjacent cacheline prefetch as is commonly
@@ -53,14 +54,14 @@ struct lfstack_impl {
 
 struct lfstack {
     alignas(LFSTACK_ALIGN) _Atomic
-	struct lfstack_impl nodecache; // lock-free stack of free nodes
+    struct lfstack_impl nodecache; // lock-free stack of free nodes
 
     alignas(LFSTACK_ALIGN) _Atomic
-	struct lfstack_impl stack;     // lock-free stack of busy nodes
+    struct lfstack_impl stack;     // lock-free stack of busy nodes
     atomic_ulong        nodec;     // number of nodes allocated from nodev[]
     u_long              nodemax;   // max number of nodes in nodev[]
 
-	alignas(LFSTACK_ALIGN)
+    alignas(LFSTACK_ALIGN)
     struct lfstack_node nodev[];   // vector of embedded nodes
 };
 
