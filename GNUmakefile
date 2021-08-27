@@ -2,23 +2,21 @@
 
 PROG := lftest
 
-HDR	:= lfstack.h
-SRC	:= lfstack.c main.c
+SRC := lfstack.c main.c
 OBJ := ${SRC:.c=.o}
 
-LDLIBS := -pthread
-
 PROG_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
-PLATFORM	:= $(shell uname -s | tr 'a-z' 'A-Z')
+PLATFORM := ${shell uname -s | tr '[:upper:]' '[:lower:]'}
 
-INCLUDE 	:= -I.
-CDEFS 		:= -DPROG_VERSION=\"${PROG_VERSION}\"
-CDEFS 		+= -DNDEBUG
-CPPFLAGS	:= ${CDEFS}
+INCLUDE  := -I. -I../src
+CFLAGS   += -std=c11 -Wall -O2 -march=native -g ${INCLUDE}
+CPPFLAGS += -DPROG_VERSION=\"${PROG_VERSION}\" -DNDEBUG
+LDLIBS   += -lpthread
 
-CFLAGS		+= -std=c11 -Wall -O2 -g ${INCLUDE}
-CFLAGS		+= -march=native
-DEBUG		:= -O0 -DDEBUG -UNDEBUG -fno-omit-frame-pointer
+ifeq ($(PLATFORM),linux)
+CPPFLAGS += -D_GNU_SOURCE
+LDLIBS   += -latomic
+endif
 
 # Always delete partially built targets.
 #
@@ -30,7 +28,8 @@ DEBUG		:= -O0 -DDEBUG -UNDEBUG -fno-omit-frame-pointer
 
 all: ${PROG}
 
-asan: CFLAGS += ${DEBUG}
+asan: CPPFLAGS += -UNDEBUG
+asan: CFLAGS += -O0 -fno-omit-frame-pointer
 asan: CFLAGS += -fsanitize=address -fsanitize=undefined
 asan: LDLIBS += -fsanitize=address -fsanitize=undefined
 asan: ${PROG}
@@ -41,7 +40,8 @@ clean:
 
 cleandir clobber distclean maintainer-clean: clean
 
-debug: CFLAGS += ${DEBUG}
+debug: CPPFLAGS += -UNDEBUG
+debug: CFLAGS += -O0 -fno-omit-frame-pointer
 debug: ${PROG}
 
 # Use gmake's link rule to produce the target.
